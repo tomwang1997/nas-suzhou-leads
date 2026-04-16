@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAS Suzhou · Leads 跟进管理系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== CSS Variables ===== */
+    :root {
+      --teal:        #30CDD7;
+      --deep-blue:   #003057;
+      --light-teal:  #B4EBF5;
+      --yellow:      #FFCB00;
+      --red:         #FF3750;
+      --white:       #FFFFFF;
+      --bg:          #F4FAFB;
+      --border:      #D6EFF3;
+      --text-dark:   #1A2E3B;
+      --text-mid:    #4A6070;
+      --text-light:  #8AAABB;
+      --shadow:      0 2px 12px rgba(0,48,87,0.09);
+      --radius:      10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text-dark);
+      min-height: 100vh;
+    }
+
+    /* ===== Header ===== */
+    header {
+      background: var(--deep-blue);
+      color: var(--white);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo-badge {
+      background: var(--teal);
+      color: var(--deep-blue);
+      font-weight: 800;
+      font-size: 13px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    header h1 {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .week-badge {
+      background: rgba(48,205,215,0.18);
+      color: var(--teal);
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(48,205,215,0.35);
+    }
+
+    /* ===== Main Layout ===== */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* ===== Section Title ===== */
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--deep-blue);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      background: var(--teal);
+      border-radius: 2px;
+    }
+
+    /* ===== KPI Cards ===== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px 18px;
+      box-shadow: var(--shadow);
+      border-top: 3px solid transparent;
+      transition: transform 0.15s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-card.total   { border-top-color: var(--teal); }
+    .kpi-card.valid   { border-top-color: #22C55E; }
+    .kpi-card.invalid { border-top-color: var(--red); }
+    .kpi-card.follow  { border-top-color: var(--yellow); }
+    .kpi-card.convert { border-top-color: var(--deep-blue); }
+    .kpi-label {
+      font-size: 12px;
+      color: var(--text-mid);
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--deep-blue);
+      line-height: 1;
+    }
+    .kpi-card.total   .kpi-value { color: var(--teal); }
+    .kpi-card.valid   .kpi-value { color: #22C55E; }
+    .kpi-card.invalid .kpi-value { color: var(--red); }
+    .kpi-card.follow  .kpi-value { color: #D4A800; }
+    .kpi-card.convert .kpi-value { color: var(--deep-blue); }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 4px;
+    }
+
+    /* ===== Charts Row ===== */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 900px) {
+      .charts-row { grid-template-columns: 1fr; }
+    }
+    .chart-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .chart-card h3 {
+      font-size: 13px;
+      color: var(--text-mid);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 200px;
+    }
+
+    /* ===== Toolbar ===== */
+    .toolbar {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .toolbar input[type="text"],
+    .toolbar select {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 13px;
+      color: var(--text-dark);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .toolbar input[type="text"]:focus,
+    .toolbar select:focus {
+      border-color: var(--teal);
+    }
+    .toolbar input[type="text"] { min-width: 200px; }
+
+
+
+    /* ===== Table ===== */
+    .table-wrap {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .table-scroll {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr {
+      background: var(--deep-blue);
+      color: var(--white);
+    }
+    thead th {
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { background: #004080; }
+    thead th .sort-icon { opacity: 0.5; margin-left: 4px; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    tbody tr:hover { background: #F0FBFC; }
+    tbody tr:last-child { border-bottom: none; }
+    td {
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+    .td-phone {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      color: var(--deep-blue);
+      white-space: nowrap;
+    }
+    .td-name { font-weight: 500; }
+    .td-date { color: var(--text-mid); white-space: nowrap; font-size: 12px; }
+    .td-week { color: var(--text-light); font-size: 11px; }
+
+    /* Status badge */
+    .status-sel {
+      border: none;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 24px;
+      transition: box-shadow 0.15s;
+    }
+    .status-sel:focus { box-shadow: 0 0 0 2px var(--teal); }
+    .status-sel.s-pending  { background-color: #F3F4F6; color: #6B7280; }
+    .status-sel.s-valid    { background-color: #DCFCE7; color: #15803D; }
+    .status-sel.s-invalid  { background-color: #FFE4E8; color: #BE123C; }
+    .status-sel.s-follow   { background-color: #FEF9C3; color: #92400E; }
+    .status-sel.s-convert  { background-color: #DBEAFE; color: #1E40AF; }
+
+    /* Channel tag */
+    .channel-tag {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .ch-xhs   { background: #FFE4E8; color: #BE123C; }
+    .ch-pyq   { background: #DBEAFE; color: #1E40AF; }
+    .ch-dy    { background: #F3E8FF; color: #6B21A8; }
+    .ch-other { background: #F3F4F6; color: #374151; }
+    /* Source sub-tag */
+    .sub-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .sub-tag-ad   { background: #FFF3CD; color: #92400E; }
+    .sub-tag-dm   { background: #D1FAE5; color: #065F46; }
+    .sub-tag-none { background: transparent; color: var(--text-light); font-weight:400; }
+
+    /* Notes input */
+    .note-input {
+      width: 100%;
+      min-width: 160px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 12px;
+      color: var(--text-dark);
+      background: var(--bg);
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .note-input:focus { border-color: var(--teal); background: var(--white); }
+
+
+
+
+
+    /* ===== Footer ===== */
+    .table-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-mid);
+    }
+
+    /* ===== Toast ===== */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--deep-blue);
+      color: var(--white);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 700px) {
+      main { padding: 16px 10px 40px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      header { padding: 0 16px; }
+      header h1 { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header>
+  <div class="header-left">
+    <span class="logo-badge">NAS</span>
+    <h1>Suzhou · Leads 跟进管理系统</h1>
+  </div>
+  <div class="header-right">
+    <span class="week-badge" id="currentWeekBadge">本周数据</span>
+    <span style="font-size:12px;color:rgba(255,255,255,0.55)" id="lastSaveTime"></span>
+  </div>
+</header>
+
+<!-- ===== Main ===== -->
+<main>
+
+  <!-- KPI Cards -->
+  <div class="section-title">数据总览</div>
+  <div class="kpi-grid">
+    <div class="kpi-card total">
+      <div class="kpi-label">总 Leads 数</div>
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-sub">本系统累计</div>
+    </div>
+    <div class="kpi-card valid">
+      <div class="kpi-label">✅ 有效</div>
+      <div class="kpi-value" id="kpi-valid">0</div>
+      <div class="kpi-sub" id="kpi-valid-pct">—</div>
+    </div>
+    <div class="kpi-card invalid">
+      <div class="kpi-label">❌ 无效</div>
+      <div class="kpi-value" id="kpi-invalid">0</div>
+      <div class="kpi-sub" id="kpi-invalid-pct">—</div>
+    </div>
+    <div class="kpi-card follow">
+      <div class="kpi-label">🔄 跟进中</div>
+      <div class="kpi-value" id="kpi-follow">0</div>
+      <div class="kpi-sub" id="kpi-follow-pct">—</div>
+    </div>
+    <div class="kpi-card convert">
+      <div class="kpi-label">🎉 成功转化</div>
+      <div class="kpi-value" id="kpi-convert">0</div>
+      <div class="kpi-sub" id="kpi-convert-pct">—</div>
+    </div>
+    <div class="kpi-card" style="border-top-color:#8B5CF6">
+      <div class="kpi-label">⏳ 待处理</div>
+      <div class="kpi-value" id="kpi-pending" style="color:#8B5CF6">0</div>
+      <div class="kpi-sub" id="kpi-pending-pct">—</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="section-title">可视化分析</div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Leads 状态分布</h3>
+      <div class="chart-wrap"><canvas id="chartStatus"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>渠道来源分布</h3>
+      <div class="chart-wrap"><canvas id="chartChannel"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>各渠道状态对比</h3>
+      <div class="chart-wrap"><canvas id="chartChannelStatus"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="section-title">Leads 明细管理</div>
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="🔍 搜索手机号 / 家长姓名 / 备注…" oninput="renderTable()" />
+    <select id="filterStatus" onchange="renderTable()">
+      <option value="">全部状态</option>
+      <option value="pending">⏳ 待处理</option>
+      <option value="valid">✅ 有效</option>
+      <option value="invalid">❌ 无效</option>
+      <option value="follow">🔄 跟进中</option>
+      <option value="convert">🎉 已转化</option>
+    </select>
+    <select id="filterChannel" onchange="renderTable()">
+      <option value="">全部渠道</option>
+      <option value="小红书">小红书</option>
+      <option value="朋友圈广告">朋友圈广告</option>
+      <option value="抖音广告">抖音广告</option>
+      <option value="其他">其他</option>
+    </select>
+    <select id="filterSubTag" onchange="renderTable()">
+      <option value="">全部来源</option>
+      <option value="投放">小红书投放</option>
+      <option value="私信">小红书私信</option>
+    </select>
+    <select id="filterWeek" onchange="renderTable()">
+      <option value="">全部周期</option>
+    </select>
+    <select id="filterAssignee" onchange="renderTable()">
+      <option value="">全部老师</option>
+      <option value="Anna">Anna</option>
+      <option value="Jason">Jason</option>
+      <option value="Fairy">Fairy</option>
+      <option value="Angel">Angel</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="leadsTable">
+        <thead>
+          <tr>
+            <th onclick="sortBy('phone')">手机号 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortBy('name')">家长称呼 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortBy('channel')">渠道来源 <span class="sort-icon">⇅</span></th>
+            <th>来源标签</th>
+            <th onclick="sortBy('date')">入库日期 <span class="sort-icon">⇅</span></th>
+            <th>周期</th>
+            <th onclick="sortBy('assignee')">负责老师 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortBy('status')">跟进状态 <span class="sort-icon">⇅</span></th>
+            <th>备注（无效原因 / 跟进记录）</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span id="tableCount">共 0 条记录</span>
+      <span style="color:var(--text-light)">所有修改自动保存到本地 · 导出 Excel 可上传至腾讯文档 / Google 表格</span>
+    </div>
+  </div>
+
+</main>
+
+
+
+<!-- ===== Toast ===== -->
+<div id="toast"></div>
+
+<!-- ===== Script ===== -->
+<script>
+// ==================== Data Store ====================
+const STORAGE_KEY = 'nas_suzhou_leads_v5';
+let leads = [];
+let sortKey = 'date';
+let sortAsc = false;
+
+const STATUS_MAP = {
+  pending: { label: '⏳ 待处理', cls: 's-pending' },
+  valid:   { label: '✅ 有效',   cls: 's-valid'   },
+  invalid: { label: '❌ 无效',   cls: 's-invalid' },
+  follow:  { label: '🔄 跟进中', cls: 's-follow'  },
+  convert: { label: '🎉 已转化', cls: 's-convert' },
+};
+
+const CHANNEL_CLS = {
+  '小红书':    'ch-xhs',
+  '朋友圈广告':'ch-pyq',
+  '抖音广告':  'ch-dy',
+};
+
+// ==================== Init ====================
+function init() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    leads = JSON.parse(saved);
+  } else {
+    // Seed data from 4.6-4.12 report (56 leads as sample)
+    leads = generateSeedData();
+    saveData();
+  }
+  populateWeekFilter();
+  updateWeekBadge();
+  renderAll();
+}
+
+function generateSeedData() {
+  return [{"id":"p3h0w59bg4","phone":"15862425117","name":"家长","channel":"小红书","subTag":"私信","date":"2026-04-15","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"kbz87j4kfy","phone":"412432173","name":"家长","channel":"小红书","subTag":"私信","date":"2026-04-14","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为小红书号/其他ID","createdAt":1776302499375},{"id":"wtbvzu0j9n","phone":"15370000676","name":"图图","channel":"小红书","subTag":"私信","date":"2026-04-14","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"oie0qdh7hb","phone":"17751724423","name":"刘德鑫","channel":"抖音广告","subTag":"","date":"2026-04-14","week":"4.13-4.19","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"0qqdm8166y","phone":"15555921078","name":"刘芳","channel":"抖音广告","subTag":"","date":"2026-04-14","week":"4.13-4.19","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"h3g7lgg7w7","phone":"zzy327687","name":"学生","channel":"小红书","subTag":"私信","date":"2026-04-13","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为其他ID","createdAt":1776302499375},{"id":"yq6g3eg17s","phone":"小红书号：95521610909","name":"家长","channel":"小红书","subTag":"私信","date":"2026-04-13","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为小红书号","createdAt":1776302499375},{"id":"t8zjrhp3oo","phone":"13451673080","name":"陆敏","channel":"抖音广告","subTag":"","date":"2026-04-13","week":"4.13-4.19","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"oz09u6d8m2","phone":"13962280581","name":"孟庆云","channel":"抖音广告","subTag":"","date":"2026-04-13","week":"4.13-4.19","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"d56f1vcqdk","phone":"13140913880","name":"范海平","channel":"抖音广告","subTag":"","date":"2026-04-13","week":"4.13-4.19","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"meu17so1nq","phone":"15190198390","name":"苏韵","channel":"抖音广告","subTag":"","date":"2026-04-13","week":"4.13-4.19","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"mvng4hda6a","phone":"13701728780","name":"周路","channel":"抖音广告","subTag":"","date":"2026-04-13","week":"4.13-4.19","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"i5dw6u90c8","phone":"15554562076","name":"张亚婵","channel":"抖音广告","subTag":"","date":"2026-04-13","week":"4.13-4.19","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"tgqlmtz2xb","phone":"13915670426","name":"张恩桐","channel":"小红书","subTag":"私信","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"ltwt5kwodg","phone":"15862504134","name":"家长","channel":"小红书","subTag":"私信","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"9z9jagsynf","phone":"13915596209","name":"邱晓平","channel":"抖音广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"y39pz0ylr7","phone":"13962195232","name":"周","channel":"抖音广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"初中","status":"pending","note":"","createdAt":1776302499403},{"id":"bxozsar4ws","phone":"13122828176","name":"赵赵","channel":"抖音广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"tbh1eei5ki","phone":"13814868431","name":"左嘉桐","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"6sgujlrrnx","phone":"17373777354","name":"高福来","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：湖南-益阳","createdAt":1776302499423},{"id":"pbd01p4cnr","phone":"18013778717","name":"王屹梵","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"nc1wh8k4ac","phone":"15137605132","name":"王艺森","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：河南-信阳","createdAt":1776302499423},{"id":"gj7ze791kg","phone":"18118137203","name":"齐华","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"6mkx97f9go","phone":"13656203960","name":"胡峻龙","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"sae130116h","phone":"15952432633","name":"谢欣","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"bz33tj2rk6","phone":"15162678860","name":"武净之","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"3oavjr9x0c","phone":"18206218699","name":"李美","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"62unpu4gkj","phone":"13862081679","name":"章仕宏","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"hayw4rijnd","phone":"15962161949","name":"天瑞","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"l8jjvr64dq","phone":"18999110555","name":"王楚溪","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：新疆-乌鲁木齐","createdAt":1776302499423},{"id":"xwdlyojebc","phone":"18913242372","name":"张慧琳","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"9p2wczrlia","phone":"15995410915","name":"俞杨","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"7fb7ggkmcb","phone":"15862662256","name":"豆豆","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"4wvvk4kdo0","phone":"18852406367","name":"小予","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"7w874e86z1","phone":"18006209867","name":"张凯","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"ns5bfe9li7","phone":"13814960023","name":"吴卓亮","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"t3gw22zg1z","phone":"18549843143","name":"陈可书","channel":"朋友圈广告","subTag":"","date":"2026-04-12","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"号码归属地：江苏-苏州","createdAt":1776302499423},{"id":"ppjxbr4eko","phone":"qq124895447","name":"学生","channel":"小红书","subTag":"私信","date":"2026-04-11","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为QQ号","createdAt":1776302499375},{"id":"d3cq0hqytt","phone":"CovikT-12-23","name":"学生","channel":"小红书","subTag":"私信","date":"2026-04-11","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为微信/其他ID","createdAt":1776302499375},{"id":"q56154t42d","phone":"15895537206","name":"小钱","channel":"抖音广告","subTag":"","date":"2026-04-11","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"wk2j7gshnq","phone":"18913233523","name":"张红丽","channel":"抖音广告","subTag":"","date":"2026-04-11","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"p8x6c3gkth","phone":"小红书号：422406219","name":"学生","channel":"小红书","subTag":"私信","date":"2026-04-10","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为小红书号","createdAt":1776302499375},{"id":"tc751exsn2","phone":"18913594612","name":"李乐扬","channel":"抖音广告","subTag":"","date":"2026-04-10","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"tboj3gyohw","phone":"13776027224","name":"杜席席","channel":"抖音广告","subTag":"","date":"2026-04-10","week":"4.6-4.12","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"tv69yymiwz","phone":"13712979807","name":"黄刘威","channel":"抖音广告","subTag":"","date":"2026-04-10","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"p4qvobqeex","phone":"13151179844","name":"未命名","channel":"抖音广告","subTag":"","date":"2026-04-10","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499403},{"id":"l3u34e7sde","phone":"小红书号：95848403483","name":"家长","channel":"小红书","subTag":"私信","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"联系方式为小红书号","createdAt":1776302499375},{"id":"cvdoc5sxrd","phone":"18932646328","name":"家长","channel":"小红书","subTag":"私信","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"s6kkujt7jg","phone":"18662630642","name":"王欣彤","channel":"小红书","subTag":"私信","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"ss0vglw89h","phone":"15051771572","name":"大米","channel":"抖音广告","subTag":"","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"jbk5310sis","phone":"13801549819","name":"许红祥","channel":"抖音广告","subTag":"","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"dcfe6lxp20","phone":"15906215778","name":"郑","channel":"抖音广告","subTag":"","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"qty2phzfga","phone":"18862382898","name":"谈月成","channel":"抖音广告","subTag":"","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"6amj79rjep","phone":"19814595093","name":"王先生","channel":"抖音广告","subTag":"","date":"2026-04-09","week":"4.6-4.12","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"7yidilguon","phone":"13862163297","name":"妍妍","channel":"小红书","subTag":"私信","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"x5938ng7br","phone":"15150355995","name":"周晓芳","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"7xqi04a9gu","phone":"13059079567","name":"宫振凯","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"gluu8t2qyw","phone":"19294590681","name":"胡友兰","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"f2gcuda9c3","phone":"18015413205","name":"刘","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"ydclxebcxl","phone":"18906238878","name":"徐丽霞","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"lz1aouyy9p","phone":"18036097105","name":"田丽","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初二","status":"pending","note":"","createdAt":1776302499403},{"id":"q2w8qddc7u","phone":"13814933100","name":"陈女王","channel":"抖音广告","subTag":"","date":"2026-04-08","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"ow1hg6bdf3","phone":"18616388887","name":"陈家毅","channel":"小红书","subTag":"私信","date":"2026-04-07","week":"4.6-4.12","assignee":"","grade":"","status":"pending","note":"","createdAt":1776302499375},{"id":"auwuwbsukv","phone":"13812687525","name":"刘亮","channel":"抖音广告","subTag":"","date":"2026-04-07","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"w2r3ng984k","phone":"15190177922","name":"刘华","channel":"抖音广告","subTag":"","date":"2026-04-07","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"5acx15adum","phone":"13914013861","name":"程娜","channel":"抖音广告","subTag":"","date":"2026-04-07","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403},{"id":"d5mb9ha39d","phone":"15962527317","name":"MM","channel":"抖音广告","subTag":"","date":"2026-04-07","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"9rrwe7o67v","phone":"18136965792","name":"凌","channel":"抖音广告","subTag":"","date":"2026-04-07","week":"4.6-4.12","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499403},{"id":"co56soyf9q","phone":"17768013849","name":"贾先生","channel":"抖音广告","subTag":"","date":"2026-04-06","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499404},{"id":"zaskite093","phone":"15090563802","name":"郑乃赫","channel":"抖音广告","subTag":"","date":"2026-04-06","week":"4.6-4.12","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499404},{"id":"257eytsbw6","phone":"18121558998","name":"陈菊香","channel":"抖音广告","subTag":"","date":"2026-04-05","week":"4.3-4.5","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499404},{"id":"hfsl3e2349","phone":"15318587860","name":"杨炎炎","channel":"抖音广告","subTag":"","date":"2026-04-05","week":"4.3-4.5","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499404},{"id":"yri8q65xhl","phone":"15962368837","name":"慕雪","channel":"抖音广告","subTag":"","date":"2026-04-05","week":"4.3-4.5","assignee":"","grade":"初三","status":"pending","note":"","createdAt":1776302499404},{"id":"muvx7sxzy9","phone":"19203455191","name":"王","channel":"抖音广告","subTag":"","date":"2026-04-05","week":"4.3-4.5","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499404},{"id":"3ycu71ao3u","phone":"15339669566","name":"贺","channel":"抖音广告","subTag":"","date":"2026-04-04","week":"4.3-4.5","assignee":"","grade":"小学","status":"pending","note":"","createdAt":1776302499404},{"id":"9t3me8u38v","phone":"18936086894","name":"陆","channel":"抖音广告","subTag":"","date":"2026-04-03","week":"4.3-4.5","assignee":"","grade":"初一","status":"pending","note":"","createdAt":1776302499403}];
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  const now = new Date();
+  document.getElementById('lastSaveTime').textContent =
+    '已保存 ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+// ==================== Render All ====================
+function renderAll() {
+  updateKPI();
+  renderCharts();
+  renderTable();
+}
+
+// ==================== KPI ====================
+function updateKPI() {
+  const total   = leads.length;
+  const valid   = leads.filter(l=>l.status==='valid').length;
+  const invalid = leads.filter(l=>l.status==='invalid').length;
+  const follow  = leads.filter(l=>l.status==='follow').length;
+  const convert = leads.filter(l=>l.status==='convert').length;
+  const pending = leads.filter(l=>l.status==='pending').length;
+
+  document.getElementById('kpi-total').textContent   = total;
+  document.getElementById('kpi-valid').textContent   = valid;
+  document.getElementById('kpi-invalid').textContent = invalid;
+  document.getElementById('kpi-follow').textContent  = follow;
+  document.getElementById('kpi-convert').textContent = convert;
+  document.getElementById('kpi-pending').textContent = pending;
+
+  const pct = (n) => total ? (n/total*100).toFixed(1)+'%' : '—';
+  document.getElementById('kpi-valid-pct').textContent   = pct(valid);
+  document.getElementById('kpi-invalid-pct').textContent = pct(invalid);
+  document.getElementById('kpi-follow-pct').textContent  = pct(follow);
+  document.getElementById('kpi-convert-pct').textContent = pct(convert);
+  document.getElementById('kpi-pending-pct').textContent = pct(pending);
+}
+
+// ==================== Charts ====================
+let chartStatus, chartChannel, chartChannelStatus;
+
+function renderCharts() {
+  const statusCounts = {
+    pending: leads.filter(l=>l.status==='pending').length,
+    valid:   leads.filter(l=>l.status==='valid').length,
+    invalid: leads.filter(l=>l.status==='invalid').length,
+    follow:  leads.filter(l=>l.status==='follow').length,
+    convert: leads.filter(l=>l.status==='convert').length,
+  };
+
+  // Chart 1: Status Doughnut
+  const ctx1 = document.getElementById('chartStatus').getContext('2d');
+  if (chartStatus) chartStatus.destroy();
+  chartStatus = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['待处理','有效','无效','跟进中','已转化'],
+      datasets: [{
+        data: [statusCounts.pending, statusCounts.valid, statusCounts.invalid, statusCounts.follow, statusCounts.convert],
+        backgroundColor: ['#C4B5FD','#86EFAC','#FCA5A5','#FDE68A','#93C5FD'],
+        borderColor: '#fff',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+      cutout: '60%',
+    }
+  });
+
+  // Chart 2: Channel Bar
+  const channelCounts = {};
+  leads.forEach(l => { channelCounts[l.channel] = (channelCounts[l.channel]||0) + 1; });
+  const chLabels = Object.keys(channelCounts);
+  const chColors = chLabels.map(c => {
+    if (c.includes('小红书')) return '#30CDD7';
+    if (c.includes('朋友圈')) return '#003057';
+    if (c.includes('抖音'))   return '#FFCB00';
+    return '#B4EBF5';
+  });
+
+  const ctx2 = document.getElementById('chartChannel').getContext('2d');
+  if (chartChannel) chartChannel.destroy();
+  chartChannel = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: chLabels,
+      datasets: [{
+        label: 'Leads 数',
+        data: chLabels.map(c => channelCounts[c]),
+        backgroundColor: chColors,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#EEF5F7' } },
+        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Chart 3: Channel × Status stacked bar
+  const channels = [...new Set(leads.map(l=>l.channel))];
+  const statuses = ['pending','valid','invalid','follow','convert'];
+  const statusLabels = ['待处理','有效','无效','跟进中','已转化'];
+  const statusColors = ['#C4B5FD','#86EFAC','#FCA5A5','#FDE68A','#93C5FD'];
+
+  const ctx3 = document.getElementById('chartChannelStatus').getContext('2d');
+  if (chartChannelStatus) chartChannelStatus.destroy();
+  chartChannelStatus = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: channels,
+      datasets: statuses.map((s, i) => ({
+        label: statusLabels[i],
+        data: channels.map(ch => leads.filter(l=>l.channel===ch && l.status===s).length),
+        backgroundColor: statusColors[i],
+        borderRadius: 3,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } } },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } }, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#EEF5F7' } }
+      }
+    }
+  });
+}
+
+// ==================== Table ===========================
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fc = document.getElementById('filterChannel').value;
+  const fw = document.getElementById('filterWeek').value;
+  const fa = document.getElementById('filterAssignee').value;
+  const ft = document.getElementById('filterSubTag').value;
+
+  return leads.filter(l => {
+    if (fs && l.status !== fs) return false;
+    if (fc && l.channel !== fc) return false;
+    if (fw && l.week !== fw) return false;
+    if (fa && l.assignee !== fa) return false;
+    if (ft && (l.subTag||'') !== ft) return false;
+    if (q) {
+      const hay = (l.phone+l.name+l.note+l.assignee+l.grade).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    let va = a[sortKey]||'', vb = b[sortKey]||'';
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+}
+
+function renderTable() {
+  const filtered = getFiltered();
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  filtered.forEach(lead => {
+    const tr = document.createElement('tr');
+    const chCls = CHANNEL_CLS[lead.channel] || 'ch-other';
+    const stInfo = STATUS_MAP[lead.status] || STATUS_MAP.pending;
+
+    tr.innerHTML = `
+      <td class="td-phone">${escHtml(lead.phone)}</td>
+      <td class="td-name">${escHtml(lead.name || '—')}</td>
+      <td><span class="channel-tag ${chCls}">${escHtml(lead.channel)}</span></td>
+      <td>${lead.subTag ? `<span class="sub-tag ${lead.subTag==='投放'?'sub-tag-ad':'sub-tag-dm'}">${escHtml(lead.subTag)}</span>` : '<span class="sub-tag sub-tag-none">—</span>'}</td>
+      <td class="td-date">${escHtml(lead.date || '—')}</td>
+      <td class="td-week" style="color:var(--text-light);font-size:11px">${escHtml(lead.week || '—')}</td>
+      <td>${escHtml(lead.assignee || '—')}</td>
+      <td>
+        <select class="status-sel ${stInfo.cls}" data-id="${lead.id}" onchange="changeStatus(this)">
+          <option value="pending" ${lead.status==='pending'?'selected':''}>⏳ 待处理</option>
+          <option value="valid"   ${lead.status==='valid'  ?'selected':''}>✅ 有效</option>
+          <option value="invalid" ${lead.status==='invalid'?'selected':''}>❌ 无效</option>
+          <option value="follow"  ${lead.status==='follow' ?'selected':''}>🔄 跟进中</option>
+          <option value="convert" ${lead.status==='convert'?'selected':''}>🎉 已转化</option>
+        </select>
+      </td>
+      <td>
+        <textarea class="note-input" rows="2" data-id="${lead.id}" placeholder="填写备注…" onblur="saveNote(this)">${escHtml(lead.note || '')}</textarea>
+      </td>
+
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('tableCount').textContent = `共 ${filtered.length} 条记录（总计 ${leads.length} 条）`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ==================== Interactions ====================
+function changeStatus(sel) {
+  const id = sel.dataset.id;
+  const lead = leads.find(l=>l.id===id);
+  if (!lead) return;
+  lead.status = sel.value;
+  // Update class
+  sel.className = 'status-sel ' + (STATUS_MAP[sel.value]||STATUS_MAP.pending).cls;
+  saveData();
+  updateKPI();
+  renderCharts();
+  showToast('状态已更新 ✓');
+}
+
+function saveNote(ta) {
+  const id = ta.dataset.id;
+  const lead = leads.find(l=>l.id===id);
+  if (!lead) return;
+  lead.note = ta.value;
+  saveData();
+  showToast('备注已保存 ✓');
+}
+
+function sortBy(key) {
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = true; }
+  renderTable();
+}
+
+
+
+// ==================== Helpers ====================
+function populateWeekFilter() {
+  const weeks = [...new Set(leads.map(l=>l.week).filter(Boolean))].sort();
+  const sel = document.getElementById('filterWeek');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">全部周期</option>';
+  weeks.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w; opt.textContent = w;
+    if (w === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function getCurrentWeekStr() {
+  const now = new Date();
+  const day = now.getDay() || 7;
+  const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const fmt = d => `${d.getMonth()+1}.${d.getDate()}`;
+  return `${fmt(mon)}-${fmt(sun)}`;
+}
+
+function updateWeekBadge() {
+  document.getElementById('currentWeekBadge').textContent = getCurrentWeekStr();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+
+
+// ==================== Start ====================
+init();
+</script>
+</body>
+</html>
