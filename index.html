@@ -289,6 +289,28 @@
     .status-sel.s-follow   { background-color: #FEF9C3; color: #92400E; }
     .status-sel.s-convert  { background-color: #DBEAFE; color: #1E40AF; }
 
+    /* Assignee select */
+    .assignee-sel {
+      border: 1.5px solid #E5E7EB;
+      border-radius: 16px;
+      padding: 4px 24px 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-color: #F8FAFC;
+      color: #374151;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2330CDD7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      min-width: 90px;
+    }
+    .assignee-sel:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(48,205,215,0.2); }
+    .assignee-sel:not([value=""]):not(:has(option[value=""]:checked)) { background-color: #E0F9FB; color: var(--dark-blue); border-color: var(--teal); }
+
     /* Channel tag */
     .channel-tag {
       display: inline-block;
@@ -786,7 +808,15 @@ function renderTable() {
       <td>${lead.subTag ? `<span class="sub-tag ${lead.subTag==='投放'?'sub-tag-ad':'sub-tag-dm'}">${escHtml(lead.subTag)}</span>` : '<span class="sub-tag sub-tag-none">—</span>'}</td>
       <td class="td-date">${escHtml(lead.date || '—')}</td>
       <td class="td-week" style="color:var(--text-light);font-size:11px">${escHtml(lead.week || '—')}</td>
-      <td>${escHtml(lead.assignee || '—')}</td>
+      <td>
+        <select class="assignee-sel" data-id="${lead.id}" onchange="changeAssignee(this)">
+          <option value="" ${!lead.assignee ? 'selected' : ''}>— 未分配</option>
+          <option value="Anna" ${lead.assignee==='Anna' ? 'selected' : ''}>Anna</option>
+          <option value="Jason" ${lead.assignee==='Jason' ? 'selected' : ''}>Jason</option>
+          <option value="Fairy" ${lead.assignee==='Fairy' ? 'selected' : ''}>Fairy</option>
+          <option value="Angel" ${lead.assignee==='Angel' ? 'selected' : ''}>Angel</option>
+        </select>
+      </td>
       <td>
         <select class="status-sel ${stInfo.cls}" data-id="${lead.id}" onchange="changeStatus(this)">
           <option value="pending" ${lead.status==='pending'?'selected':''}>⏳ 待处理</option>
@@ -812,6 +842,15 @@ function escHtml(s) {
 }
 
 // ==================== Interactions ====================
+function changeAssignee(sel) {
+  const id = sel.dataset.id;
+  const lead = leads.find(l=>l.id===id);
+  if (!lead) return;
+  lead.assignee = sel.value;
+  saveLeadToFirebase(lead);
+  showToast('负责老师已同步到云端 ☁️');
+}
+
 function changeStatus(sel) {
   const id = sel.dataset.id;
   const lead = leads.find(l=>l.id===id);
