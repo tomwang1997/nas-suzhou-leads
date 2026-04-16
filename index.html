@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NAS Suzhou · Leads 跟进管理系统</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getDatabase, ref, set, onValue, update } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+    window._firebaseModules = { initializeApp, getDatabase, ref, set, onValue, update };
+  </script>
   <style>
     /* ===== CSS Variables ===== */
     :root {
@@ -497,7 +503,7 @@
     </div>
     <div class="table-footer">
       <span id="tableCount">共 0 条记录</span>
-      <span style="color:var(--text-light)">所有修改自动保存到本地 · 导出 Excel 可上传至腾讯文档 / Google 表格</span>
+      <span style="color:var(--text-light)" id="syncStatus">正在连接云端数据库…</span>
     </div>
   </div>
 
@@ -510,8 +516,22 @@
 
 <!-- ===== Script ===== -->
 <script>
+// ==================== Firebase Config ====================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAxqslSE8uEzwHPx6Z7-pA5-1ymGSUY0Sg",
+  authDomain: "nas-suzhou-leads.firebaseapp.com",
+  databaseURL: "https://nas-suzhou-leads-default-rtdb.firebaseio.com",
+  projectId: "nas-suzhou-leads",
+  storageBucket: "nas-suzhou-leads.firebasestorage.app",
+  messagingSenderId: "852460554458",
+  appId: "1:852460554458:web:ada95cf3355e0c76efbde3"
+};
+
+// Firebase instances (initialized after module loads)
+let db, dbRef, dbUpdate;
+
 // ==================== Data Store ====================
-const STORAGE_KEY = 'nas_suzhou_leads_v5';
+const STORAGE_KEY = 'nas_suzhou_leads_v5'; // fallback only
 let leads = [];
 let sortKey = 'date';
 let sortAsc = false;
@@ -532,17 +552,40 @@ const CHANNEL_CLS = {
 
 // ==================== Init ====================
 function init() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    leads = JSON.parse(saved);
-  } else {
-    // Seed data from 4.6-4.12 report (56 leads as sample)
-    leads = generateSeedData();
-    saveData();
-  }
-  populateWeekFilter();
   updateWeekBadge();
-  renderAll();
+
+  // Wait for Firebase module to load, then connect
+  function tryConnect() {
+    if (window._firebaseModules) {
+      const { initializeApp, getDatabase, ref, set, onValue, update } = window._firebaseModules;
+      const app = initializeApp(FIREBASE_CONFIG);
+      db = getDatabase(app);
+      dbRef = ref;
+      dbUpdate = update;
+
+      const leadsRef = ref(db, 'leads');
+
+      // Real-time listener: auto-refresh whenever data changes in Firebase
+      onValue(leadsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          leads = Object.values(data);
+        } else {
+          // First time: push seed data to Firebase
+          leads = generateSeedData();
+          const seedObj = {};
+          leads.forEach(l => { seedObj[l.id] = l; });
+          set(leadsRef, seedObj);
+        }
+        populateWeekFilter();
+        renderAll();
+        document.getElementById('syncStatus').textContent = '☁️ 实时同步已开启 — 所有修改将实时同步到云端';
+      });
+    } else {
+      setTimeout(tryConnect, 100);
+    }
+  }
+  tryConnect();
 }
 
 function generateSeedData() {
@@ -554,10 +597,20 @@ function genId() {
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  // No-op: data is saved directly to Firebase in changeStatus/saveNote
   const now = new Date();
   document.getElementById('lastSaveTime').textContent =
-    '已保存 ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    '已同步 ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+function saveLeadToFirebase(lead) {
+  if (!db || !dbRef || !dbUpdate) return;
+  const updates = {};
+  updates['leads/' + lead.id] = lead;
+  dbUpdate(dbRef(db), updates);
+  const now = new Date();
+  document.getElementById('lastSaveTime').textContent =
+    '已同步 ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
 }
 
 // ==================== Render All ====================
@@ -764,12 +817,11 @@ function changeStatus(sel) {
   const lead = leads.find(l=>l.id===id);
   if (!lead) return;
   lead.status = sel.value;
-  // Update class
+  // Update class immediately for responsive UI
   sel.className = 'status-sel ' + (STATUS_MAP[sel.value]||STATUS_MAP.pending).cls;
-  saveData();
-  updateKPI();
-  renderCharts();
-  showToast('状态已更新 ✓');
+  // Save to Firebase (will trigger onValue and re-render)
+  saveLeadToFirebase(lead);
+  showToast('状态已同步到云端 ☁️');
 }
 
 function saveNote(ta) {
@@ -777,8 +829,9 @@ function saveNote(ta) {
   const lead = leads.find(l=>l.id===id);
   if (!lead) return;
   lead.note = ta.value;
-  saveData();
-  showToast('备注已保存 ✓');
+  // Save to Firebase
+  saveLeadToFirebase(lead);
+  showToast('备注已同步到云端 ☁️');
 }
 
 function sortBy(key) {
